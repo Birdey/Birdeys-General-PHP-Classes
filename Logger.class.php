@@ -16,17 +16,6 @@ enum LogLevel: int
 
 class Logger
 {
-    /*
-     * Log Level
-     * -1 = All
-     * 0 = Off
-     * 1 = Verbose and higher
-     * 2 = Info  and higher
-     * 3 = Warning and higher
-     * 4 = Error and higher
-     * 5 = Critical
-     */
-
     public static LogLevel $_logLevel = LogLevel::Info;
     public $_logsArray = array();
     public bool $_shouldLogToScreen = true;
@@ -101,7 +90,6 @@ class Logger
         $logFilePath = 'logs/' . $time->format("Y_m_d") . '.log';
         try {
             if (!file_exists($logFilePath)) {
-                echo 'Error opening ' . $logFilePath;
                 fopen($logFilePath, 'w+');
             }
             if ($logFile = fopen($logFilePath, 'a+')) {
@@ -109,7 +97,6 @@ class Logger
                 fclose($logFile);
             }
         } catch (\Exception $e) {
-            echo 'Crap';
         }
 
     }
@@ -121,91 +108,94 @@ class Logger
 
     public static function DrawLogBox(): void
     {
-        Logger::setShouldLog(true);
         Logger::getInstance()->drawLogsBox();
     }
 
-    private function drawLogsBox(): void
+    private function drawLogsBox(): bool
     {
-        if ($this->_shouldLogToScreen && count($this->_logsArray) > 0) {
-            ?>
-            <style>
-                #logbox {
-                    position: fixed;
-                    bottom: 0px;
-                    right: 0px;
-                    max-height: 90vh;
-                    min-width: 20vw;
-                    max-width: 100vw;
-                    overflow: scroll;
-                    pointer-events: scroll;
-                }
-
-                #logbox>table {
-                    background: rgba(40, 60, 50, 0.8);
-                    border-left: 5px solid rgba(0, 0, 0, 0.5);
-                    border-top: 5px solid rgba(0, 0, 0, 0.5);
-                    border-right: 5px solid rgba(255, 255, 255, 0.5);
-                    border-bottom: 5px solid rgba(255, 255, 255, 0.5);
-                    width: 100%;
-                }
-
-                #logbox tr:nth-child(2n) {
-                    background: rgba(10, 0, 10, 0.2);
-                }
-
-                .logheader {
-                    font-size: 1rem;
-                }
-
-                .logclass_1 {
-                    color: rgba(0, 255, 255, 0.5);
-                    font-size: 0.5rem;
-                    line-height: 0.5rem;
-                }
-
-                .logclass_2 {
-                    color: #00FF00;
-                    font-size: 0.7rem;
-                    line-height: 0.7rem;
-                }
-
-                .logclass_3 {
-                    color: #FFFF00;
-                    font-size: 1.0rem;
-                }
-
-                .logclass_4 {
-                    color: #FF0000;
-                    font-size: 1.4rem;
-                }
-
-                .logclass_5 {
-                    display: inline-block;
-                    border: thick double #FF0000;
-                    padding: 0.2rem;
-                    color: #FF5500;
-                    font-size: 1.6rem;
-                }
-            </style>
-            <?php
-            $this->_logsArray = array_reverse($this->_logsArray);
-            echo '<div class="logbox" id="logbox">';
-            echo '<table>';
-            echo '<tr class="logHeader" >';
-            echo '<th style="color: white;">Logs <span>+</span></th>';
-            echo '</tr>';
-            foreach ($this->_logsArray as $log) {
-                $level    = $log['l'];
-                $logClass = 'logclass_' . $level->value;
-
-                echo "<tr class='$logClass'>";
-                echo '<td class="logData"><code>', $this->splitString($log['m']), '</code></td>';
-                echo '</tr>';
-            }
-            echo '</table>';
-            echo '</div>';
+        if ($this->_shouldLogToScreen == false || empty($this->_logsArray)) {
+            return false;
         }
+
+        ?>
+        <style>
+            #logbox {
+                position: fixed;
+                bottom: 0px;
+                right: 0px;
+                max-height: 90vh;
+                min-width: 20vw;
+                max-width: 100vw;
+                overflow: scroll;
+                pointer-events: scroll;
+            }
+
+            #logbox>table {
+                background: rgba(40, 60, 50, 0.8);
+                border-left: 5px solid rgba(0, 0, 0, 0.5);
+                border-top: 5px solid rgba(0, 0, 0, 0.5);
+                border-right: 5px solid rgba(255, 255, 255, 0.5);
+                border-bottom: 5px solid rgba(255, 255, 255, 0.5);
+                width: 100%;
+            }
+
+            #logbox tr:nth-child(2n) {
+                background: rgba(10, 0, 10, 0.2);
+            }
+
+            .logheader {
+                font-size: 1rem;
+            }
+
+            .logclass_1 {
+                color: rgba(0, 255, 255, 0.5);
+                font-size: 0.5rem;
+                line-height: 0.5rem;
+            }
+
+            .logclass_2 {
+                color: #00FF00;
+                font-size: 0.7rem;
+                line-height: 0.7rem;
+            }
+
+            .logclass_3 {
+                color: #FFFF00;
+                font-size: 1.0rem;
+            }
+
+            .logclass_4 {
+                color: #FF0000;
+                font-size: 1.4rem;
+            }
+
+            .logclass_5 {
+                display: inline-block;
+                border: thick double #FF0000;
+                padding: 0.2rem;
+                color: #FF5500;
+                font-size: 1.6rem;
+            }
+        </style>
+        <?php
+        //$this->_logsArray = array_reverse($this->_logsArray);
+        echo '<div class="logbox" id="logbox">';
+        echo '<table>';
+        echo '<tr class="logHeader" >';
+        echo '<th style="color: white;">Logs <span>+</span></th>';
+        echo '</tr>';
+        foreach ($this->_logsArray as $log) {
+            $level    = $log['l'];
+            $logClass = 'logclass_' . $level->value;
+
+            echo "<tr class='$logClass'>";
+            echo '<td class="logData"><code>', $this->splitString($log['m']), '</code></td>';
+            echo '</tr>';
+        }
+        echo '</table>';
+        echo '</div>';
+
+        return true;
     }
 
     public function splitString(string $str): string
