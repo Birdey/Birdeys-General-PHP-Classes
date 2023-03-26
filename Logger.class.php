@@ -2,15 +2,20 @@
 
 namespace Birdey;
 
+enum LogLevel: int
+{
+    case All = -1;
+    case Off = 0;
+    case Verbose = 1;
+    case Info = 2;
+    case Warning = 3;
+    case Error = 4;
+    case Critical = 5;
+
+}
+
 class Logger
 {
-
-    public $_logsArray = array();
-    public static $_instance;
-    public $_shouldLog;
-    public $_shouldAutoShowLog = true;
-    public $_shouldLogToFile = false;
-
     /*
      * Log Level
      * -1 = All
@@ -22,14 +27,16 @@ class Logger
      * 5 = Critical
      */
 
-    public static $_logLevel = -1;
+    public static LogLevel $_logLevel = LogLevel::Info;
+    public $_logsArray = array();
+    public bool $_shouldLogToScreen = true;
+    public bool $_shouldLogToFile = true;
 
-    public function __construct()
-    {
-        $this->_shouldLog = DEBUG;
-    }
 
-    public static function getInstance()
+
+    public static $_instance;
+
+    public static function getInstance(): Logger
     {
         if (!isset(self::$_instance)) {
             self::$_instance = new Logger();
@@ -37,22 +44,22 @@ class Logger
         return self::$_instance;
     }
 
-    private function shouldLog($level)
+    private function shouldLog(LogLevel $level): bool
     {
-        if ($this->_shouldLog && self::$_logLevel != 0 && self::$_logLevel <= $level) {
-            return true;
-        } else {
+        if (
+            $this->_shouldLogToScreen == false || self::$_logLevel == LogLevel::Off || self::$_logLevel->value > $level->value) {
             return false;
         }
+        return true;
     }
 
-    private function Log($message, $level, $shouldShowStacktrace = false)
+    private function Log(string $message, LogLevel $level, bool $logStackTrace = false): void
     {
         if (count($this->_logsArray) > 1000) {
             array_shift($this->_logsArray);
         }
 
-        if ($shouldShowStacktrace) {
+        if ($logStackTrace) {
             $bt = debug_backtrace(0);
             array_shift($bt);
             array_shift($bt);
@@ -67,7 +74,7 @@ class Logger
             }
         }
 
-        if ($this->_shouldLogToFile && $level >= 3) {
+        if ($this->_shouldLogToFile && $level >= LogLevel::Warning) {
             $this->logMessageToFile($message);
         }
 
@@ -81,7 +88,7 @@ class Logger
         }
     }
 
-    private function logMessageToFile($message)
+    private function logMessageToFile(string $message): void
     {
 
         $wrongs  = array('<br>', '</br>', '<br/>', '</ br>', '<br />');
@@ -107,51 +114,35 @@ class Logger
 
     }
 
-    private function getLogColor($level)
-    {
-        switch ($level) {
-            case 1:
-                return 'rgba(0,255,255,0.5)';
-            case 2:
-                return '#00FF00';
-            case 3:
-                return '#FFFF00';
-            case 4:
-                return '#FF5500';
-            case 5:
-                return '#FF0000';
-            default:
-                return '#00FF00';
-        }
-    }
-
-    public function getLogs()
+    public function getLogs(): array
     {
         return $this->_logsArray;
     }
 
-    private function isLocalhost($whitelist = ['127.0.0.1', '::1'])
+    public static function DrawLogBox(): void
     {
-        return in_array($_SERVER['REMOTE_ADDR'], $whitelist);
+        Logger::setShouldLog(true);
+        Logger::getInstance()->drawLogsBox();
     }
 
-    public function drawLogsBox()
+    private function drawLogsBox(): void
     {
-        if ($this->_shouldLog && count($this->_logsArray) > 0 && DEBUG) {
+        if ($this->_shouldLogToScreen && count($this->_logsArray) > 0) {
             ?>
             <style>
                 #logbox {
                     position: fixed;
-                    bottom: 10px;
-                    right: 10px;
+                    bottom: 0px;
+                    right: 0px;
                     max-height: 90vh;
                     min-width: 20vw;
                     max-width: 100vw;
                     overflow: scroll;
+                    pointer-events: scroll;
                 }
 
                 #logbox>table {
-                    background: rgba(40, 60, 50, 1);
+                    background: rgba(40, 60, 50, 0.8);
                     border-left: 5px solid rgba(0, 0, 0, 0.5);
                     border-top: 5px solid rgba(0, 0, 0, 0.5);
                     border-right: 5px solid rgba(255, 255, 255, 0.5);
@@ -159,25 +150,29 @@ class Logger
                     width: 100%;
                 }
 
-                #logbox>.logheader {
-                    font-size: 1.4rem;
+                #logbox tr:nth-child(2n) {
+                    background: rgba(10, 0, 10, 0.2);
+                }
+
+                .logheader {
+                    font-size: 1rem;
                 }
 
                 .logclass_1 {
                     color: rgba(0, 255, 255, 0.5);
-                    font-size: 0.8rem;
-                    line-height: 0.8rem;
+                    font-size: 0.5rem;
+                    line-height: 0.5rem;
                 }
 
                 .logclass_2 {
                     color: #00FF00;
-                    font-size: 1rem;
-                    line-height: 1rem;
+                    font-size: 0.7rem;
+                    line-height: 0.7rem;
                 }
 
                 .logclass_3 {
                     color: #FFFF00;
-                    font-size: 1.2rem;
+                    font-size: 1.0rem;
                 }
 
                 .logclass_4 {
@@ -202,10 +197,8 @@ class Logger
             echo '</tr>';
             foreach ($this->_logsArray as $log) {
                 $level    = $log['l'];
-                $color    = $this->getLogColor($level);
-                $logClass = 'logclass_' . $level;
+                $logClass = 'logclass_' . $level->value;
 
-                $size = (4 + ($level * 4)) . "px";
                 echo "<tr class='$logClass'>";
                 echo '<td class="logData"><code>', $this->splitString($log['m']), '</code></td>';
                 echo '</tr>';
@@ -215,65 +208,43 @@ class Logger
         }
     }
 
-    public function splitString($str)
+    public function splitString(string $str): string
     {
         $array = explode("\n", wordwrap($str, 160));
         return implode("<br/>", $array);
     }
 
+    public static function setShouldLog(bool $shouldLog): void
+    {
+        LOGGER::getInstance()->_shouldLogToScreen = $shouldLog;
+    }
+
     /* LOG FUNCTIONS */
 
-    public static function Verbose($message, $st = false)
+    public static function Verbose(string $message, bool $logStackTrace = false): void
     {
-        Logger::getInstance()->logVerbose($message, $st);
+        Logger::getInstance()->Log($message, LogLevel::Verbose, $logStackTrace);
     }
 
-    public static function Info($message, $st = false)
+    public static function Info(string $message, bool $logStackTrace = false): void
     {
-        Logger::getInstance()->logInfo($message, $st);
+        Logger::getInstance()->Log($message, LogLevel::Info, $logStackTrace);
     }
 
-    public static function Warning($message, $st = false)
+    public static function Warning(string $message, bool $logStackTrace = false): void
     {
-        Logger::getInstance()->_shouldAutoShowLog = true;
-        Logger::getInstance()->logWarning($message, $st);
+        Logger::getInstance()->Log($message, LogLevel::Warning, $logStackTrace);
     }
 
-    public static function Error($message, $st = false)
+    public static function Error(string $message, bool $logStackTrace = false): void
     {
-        Logger::getInstance()->_shouldAutoShowLog = true;
-        Logger::getInstance()->logError($message, $st);
+        Logger::getInstance()->Log($message, LogLevel::Error, $logStackTrace);
     }
 
-    public static function Critical($message, $st = false)
+    public static function Critical(string $message, bool $logStackTrace = false): void
     {
-        Logger::getInstance()->_shouldAutoShowLog = true;
-        Logger::getInstance()->logCritical($message, $st);
+        Logger::getInstance()->Log($message, LogLevel::Critical, $logStackTrace);
     }
 
-    private function LogVerbose($message, $st = false)
-    {
-        $this->Log($message, 1, $st);
-    }
-
-    private function LogInfo($message, $st = false)
-    {
-        $this->Log($message, 2, $st);
-    }
-
-    private function LogWarning($message, $st = false)
-    {
-        $this->Log($message, 3, $st);
-    }
-
-    private function LogError($message, $st = false)
-    {
-        $this->Log($message, 4, $st);
-    }
-
-    private function LogCritical($message, $st = false)
-    {
-        $this->Log($message, 5, $st);
-    }
 
 }
