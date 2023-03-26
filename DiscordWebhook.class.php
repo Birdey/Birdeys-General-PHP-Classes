@@ -2,9 +2,6 @@
 
 namespace Birdey;
 
-require_once('res/classes/Converter.class.php');
-require_once('res/classes/BBCodeConverter.class.php');
-
 use Converter\BBCodeConverter;
 
 class DiscordWebhook
@@ -19,9 +16,9 @@ class DiscordWebhook
 
     function __construct(string $title, string $message, string $url)
     {
-        $this->title = $title;
+        $this->title   = $title;
         $this->message = $message;
-        $this->url = $url;
+        $this->url     = $url;
     }
 
     public function getWebHookData()
