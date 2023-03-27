@@ -33,7 +33,7 @@ class ErrorFormatter
         Logger::Warning($errstr);
         Logger::Warning("In file: " . $errfile . " on line " . $errline);
         Logger::Warning("Error Number: " . $errno);
-        Logger::DrawLogBox();
+        // Logger::DrawLogBox();
         return $html;
     }
 }
