@@ -16,7 +16,7 @@ enum LogLevel: int
 
 class Logger
 {
-    public static LogLevel $_logLevel = LogLevel::Info;
+    public static LogLevel $_logLevel = LogLevel::Verbose;
     public $_logsArray = array();
     public bool $_shouldLogToScreen = true;
     public bool $_shouldLogToFile = true;
@@ -48,22 +48,20 @@ class Logger
             array_shift($this->_logsArray);
         }
 
-        if ($logStackTrace) {
-            $bt = debug_backtrace(0);
+        if ($logStackTrace || $level->value == LogLevel::Critical->value) {
+            $bt = debug_backtrace();
             array_shift($bt);
             array_shift($bt);
             $btCount = count($bt);
             foreach ($bt as $key => $val) {
-                $file = $val['file'];
-                // $file = str_replace('C:\xampp\htdocs\proj\conshop_se\\', "", $file);
-                $line    = $val['line'];
-                $message .= "<br/>st($btCount): [$file($line)]";
-                //$message  .= '<br/>st('.$count--.'): [' . $file . ':' . $line . ']';
+                $file    = $val['file'] ?? 'null';
+                $line    = $val['line'] ?? 'null';
+                $message .= "<br/>st($btCount): $file($line)";
                 $btCount--;
             }
         }
 
-        if ($this->_shouldLogToFile && $level >= LogLevel::Warning) {
+        if ($this->_shouldLogToFile && $level->value >= LogLevel::Warning->value) {
             $this->logMessageToFile($message);
         }
 
@@ -121,80 +119,98 @@ class Logger
         <style>
             #logbox {
                 position: fixed;
-                bottom: 0px;
-                right: 0px;
-                max-height: 90vh;
-                min-width: 20vw;
-                max-width: 100vw;
                 overflow: scroll;
-                pointer-events: scroll;
+                top: 5px;
+                right: 5px;
+                max-height: calc(100vh - 10px);
+                max-width: calc(100vw - 10px);
+                z-index: 100;
+                box-shadow: 1px 2px 3px black;
+                border: 5px solid green;
+                background: black;
+                font-family: monospace;
+                font-size: 0.8rem;
+                line-height: 1rem;
             }
 
             #logbox>table {
-                background: rgba(40, 60, 50, 0.8);
-                border-left: 5px solid rgba(0, 0, 0, 0.5);
-                border-top: 5px solid rgba(0, 0, 0, 0.5);
-                border-right: 5px solid rgba(255, 255, 255, 0.5);
-                border-bottom: 5px solid rgba(255, 255, 255, 0.5);
+                Background: #000;
                 width: 100%;
             }
 
             #logbox tr:nth-child(2n) {
-                background: rgba(10, 0, 10, 0.2);
+                Background: rgb(0, 40, 0);
             }
 
-            .logheader {
-                font-size: 1rem;
+            .logRow {
+                display: none;
+            }
+
+            .logHeader {
+                font-size: 1.2rem;
+                line-height: 2rem;
             }
 
             .logclass_1 {
                 color: rgba(0, 255, 255, 0.5);
-                font-size: 0.5rem;
-                line-height: 0.5rem;
+                width: 100%;
             }
 
             .logclass_2 {
                 color: #00FF00;
-                font-size: 0.7rem;
-                line-height: 0.7rem;
+                width: 100%;
             }
 
             .logclass_3 {
                 color: #FFFF00;
-                font-size: 1.0rem;
+                width: 100%;
             }
 
             .logclass_4 {
                 color: #FF0000;
-                font-size: 1.4rem;
+                width: 100%;
             }
 
             .logclass_5 {
                 display: inline-block;
-                border: thick double #FF0000;
+                border: thin solid #FF0000;
                 padding: 0.2rem;
                 color: #FF5500;
-                font-size: 1.6rem;
+                width: 100%;
             }
         </style>
         <?php
         //$this->_logsArray = array_reverse($this->_logsArray);
         echo '<div class="logbox" id="logbox">';
         echo '<table>';
-        echo '<tr class="logHeader" >';
-        echo '<th style="color: white;">Logs <span>+</span></th>';
-        echo '</tr>';
+        echo '<th class="logHeader" id="logHeader" onclick="toggleLog()" style="color: white; ">- LOGGER CONSOLE -</th>';
         foreach ($this->_logsArray as $log) {
             $level    = $log['l'];
             $logClass = 'logclass_' . $level->value;
 
-            echo "<tr class='$logClass'>";
-            echo '<td class="logData"><code>', $this->splitString($log['m']), '</code></td>';
+            echo "<tr class='logRow $logClass'>";
+            echo '<td class="logData">', nl2br($log['m']), '</td>';
             echo '</tr>';
         }
         echo '</table>';
         echo '</div>';
-
+        ?>
+        <script>
+            function toggleLog() {
+                console.log('Toggling LogBox');
+                Array.from(document.getElementsByClassName('logRow')).forEach(
+                    (element, index, array) => {
+                        if (element.style.display == 'block') {
+                            element.style.display = 'none';
+                        } else {
+                            element.style.display = 'block';
+                        }
+                    }
+                );
+            }
+        </script>
+        <?php
+        Logger::Critical('DRAWING MULTIPLE LOGBOXES!', true);
         return true;
     }
 
@@ -234,6 +250,23 @@ class Logger
     public static function Critical(string $message, bool $logStackTrace = false): void
     {
         Logger::getInstance()->Log($message, LogLevel::Critical, $logStackTrace);
+    }
+
+    public static function TestLogTypes(): void
+    {
+        Logger::Info('----------------');
+        Logger::Info('TEST OF LOGGER MESSAGE LEVELS');
+        Logger::Verbose('Verbose Message Test');
+        Logger::Verbose('Verbose Stacktrace Test', true);
+        Logger::Info('Info Message Test');
+        Logger::Info('Info Stacktrace Test', true);
+        Logger::Warning('Warning Message Test');
+        Logger::Warning('Warning Stacktrace Test', true);
+        Logger::Error('Error Message Test');
+        Logger::Error('Error Stacktrace Test', true);
+        Logger::Critical('Critical Message Test');
+        Logger::Critical('Critical Stacktrace Test', true);
+        Logger::Info('----------------');
     }
 
 

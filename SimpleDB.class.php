@@ -107,22 +107,11 @@ class SimpleDB
         foreach ($values as $value) {
             $pdoPlaceholder                   = ':' . $keys[$keyIndex++];
             $this->pdoValues[$pdoPlaceholder] = $value;
-            $values_string .= $pdoPlaceholder;
-
-
-            // if (is_string($value)) {
-            //     $values_string .= "'" . $value . "'";
-            // } else if (is_int($value)) {
-            //     $values_string .= $value;
-            // } else {
-            //     throw new \UnexpectedValueException("The value `$value` in nether an int or a string!");
-            // }
-
+            $values_string .= "$pdoPlaceholder";
             $values_string .= ", ";
         }
         $values_string     = trim($values_string, ', ');
         $this->queryString = "INSERT INTO `$table` ($keys_string) VALUES ($values_string)";
-
         return $this;
     }
 
@@ -195,9 +184,9 @@ class SimpleDB
      */
     public function Where(string $field, string|int $is): SimpleDB
     {
-        $pdoString                   = $this->generateRandomString();
+        $pdoString                   = ":" . $this->generateRandomString();
         $this->pdoValues[$pdoString] = $is;
-        $this->queryString .= "WHERE `$field` = :$pdoString ";
+        $this->queryString .= "WHERE `$field` = $pdoString ";
         return $this;
     }
 
@@ -209,9 +198,9 @@ class SimpleDB
      */
     public function And (string $field, string|int $is): SimpleDB
     {
-        $pdoString                   = $this->generateRandomString();
+        $pdoString                   = ":" . $this->generateRandomString();
         $this->pdoValues[$pdoString] = $is;
-        $this->queryString .= "AND `$field` = :$pdoString ";
+        $this->queryString .= "AND `$field` = $pdoString ";
         return $this;
     }
 
@@ -252,13 +241,23 @@ class SimpleDB
             throw new SimpleDB_ConnectionNotStarted_Exception("Must connect to database before fetching data");
 
         if ($this->query = $this->PDOConnection->prepare($this->queryString)) {
-            if ($this->query->execute($this->pdoValues)) {
+            foreach ($this->pdoValues as $pdoKey => $pdoVal) {
+                if ($this->query->bindValue($pdoKey, $pdoVal)) {
+                    $this->queryString = preg_replace("/$pdoKey/", "$pdoVal", $this->queryString);
+                } else {
+                    Logger::Error("$pdoVal not bound for query: \"$this->queryString\"");
+                }
+            }
+            $this->pdoValues = [];
+            Logger::Verbose("SimpleDB executing query: \n\r" . $this->queryString);
+            if ($this->query->execute()) {
                 $this->result                         = $this->query->fetchAll(\PDO::FETCH_OBJ);
                 $this->resultCount                    = $this->query->rowCount();
                 $this->previouslyAttemptedQueryString = $this->query->queryString;
                 return $this->result;
             }
         }
+        Logger::DrawLogBox();
         return false;
     }
 
