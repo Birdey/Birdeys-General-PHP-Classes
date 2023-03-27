@@ -7,7 +7,7 @@ use Converter\BBCodeConverter;
 class DiscordWebhook
 {
 
-    private string $webhookurl = "https://discord.com/api/webhooks/1087419678156144710/dl8KtdBImg5qmqwkq60vbNKWOI20PgT1vz1lKMYyQNfAsmHtT9wd8lTIObu3-51aYSsa";
+    private string $webhookurl = "";
     private string $userName = 'Speletshus Styrelse';
     private string $imageUrl = 'http://speletshus.se/res/img/logo/sph_logo.png';
     private string $title = '';
