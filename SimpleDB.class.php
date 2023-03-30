@@ -50,6 +50,7 @@ class SimpleDB
     private \PDOStatement|bool $query;
     private array $result;
     private int $resultCount;
+    private string|bool $lastInsertedID;
     private string $errorMessage = '';
     private array $pdoValues = [];
 
@@ -80,7 +81,8 @@ class SimpleDB
                 $this->password
             );
         } catch (\PDOException $e) {
-            throw new SimpleDB_ErrorConnecting_Exception('Error Connecting to Database with provided information');
+            $infoString = "<code>Host: [$host], Database: [$dbname], User: [$user], Password: [$password]</code>";
+            throw new SimpleDB_ErrorConnecting_Exception("Error Connecting to Database with provided information: $infoString");
         }
 
         $this->PDOConnection->setAttribute(\PDO::ATTR_EMULATE_PREPARES, false);
@@ -250,10 +252,13 @@ class SimpleDB
             }
             $this->pdoValues = [];
             Logger::Verbose("SimpleDB executing query: \n\r" . $this->queryString);
+            $this->PDOConnection->beginTransaction();
             if ($this->query->execute()) {
+                $this->lastInsertedID                 = $this->PDOConnection->lastInsertId();
                 $this->result                         = $this->query->fetchAll(\PDO::FETCH_OBJ);
                 $this->resultCount                    = $this->query->rowCount();
                 $this->previouslyAttemptedQueryString = $this->query->queryString;
+                $this->PDOConnection->commit();
                 return $this->result;
             }
         }
@@ -310,6 +315,11 @@ class SimpleDB
     public function GetResults(): array|bool
     {
         return $this->result ?? false;
+    }
+
+    public function getLastInsertedID(): int|bool
+    {
+        return ((int) $this->lastInsertedID) ?? false;
     }
 
     private function generateRandomString($length = 10)

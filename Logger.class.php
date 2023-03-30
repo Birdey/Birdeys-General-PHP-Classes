@@ -2,44 +2,62 @@
 
 namespace Birdey;
 
-enum LogLevel: int
-{
-    case All = -1;
-    case Off = 0;
-    case Verbose = 1;
-    case Info = 2;
-    case Warning = 3;
-    case Error = 4;
-    case Critical = 5;
+use DateTime;
+use Exception;
 
-}
-
-class Logger
-{
-    public static LogLevel $_logLevel = LogLevel::Verbose;
-    public $_logsArray = array();
-    public bool $_shouldLogToScreen = true;
-    public bool $_shouldLogToFile = true;
+checkAndLoad('Birdey/LogLevel');
 
 
+class Logger {
+    private static ?Logger $instance = null;
+    private static LogLevel $_logLevel = LogLevel::Verbose;
+    private $_logsArray = [];
+    private bool $_shouldLogToScreen = true;
+    private bool $_shouldLogToFile = true;
 
-    public static $_instance;
+    private function __construct()
+    {
+    }
 
     public static function getInstance(): Logger
     {
-        if (!isset(self::$_instance)) {
-            self::$_instance = new Logger();
+        if (!isset(self::$instance)) {
+            self::$instance = new Logger();
         }
-        return self::$_instance;
+        return self::$instance;
     }
 
     private function shouldLog(LogLevel $level): bool
     {
-        if (
-            $this->_shouldLogToScreen == false || self::$_logLevel == LogLevel::Off || self::$_logLevel->value > $level->value) {
+        if (!$this->_shouldLogToScreen || self::$_logLevel == LogLevel::Off || self::$_logLevel->value > $level->value) {
             return false;
         }
         return true;
+    }
+
+    private function logMessageToFile(string $message, LogLevel $level): void
+    {
+
+        $wrongs  = ['<br>', '</br>', '<br/>', '</ br>', '<br />'];
+        $message = str_replace($wrongs, PHP_EOL, $message);
+
+        $time    = DateTime::createFromFormat('U.u', microtime(true));
+        $date    = $time->format("Y-m-d H:i:s.u");
+        $message = $date . " " . $message . PHP_EOL;
+
+        $logFilePath = 'logs/' . $time->format("Y_m_d") . '.log';
+        try {
+            if (!file_exists($logFilePath)) {
+                fopen($logFilePath, 'w+');
+            }
+            if ($logFile = fopen($logFilePath, 'a+')) {
+                fwrite($logFile, "LVL:[$level->value] - $message");
+                fclose($logFile);
+            }
+        } catch (Exception $e) {
+
+        }
+
     }
 
     private function Log(string $message, LogLevel $level, bool $logStackTrace = false): void
@@ -61,8 +79,8 @@ class Logger
             }
         }
 
-        if ($this->_shouldLogToFile && $level->value >= LogLevel::Warning->value) {
-            $this->logMessageToFile($message);
+        if (($this->_shouldLogToFile && $level->value >= LogLevel::Warning->value) || DEBUG || BETA) {
+            $this->logMessageToFile($message, $level);
         }
 
         if ($this->shouldLog($level)) {
@@ -75,30 +93,6 @@ class Logger
         }
     }
 
-    private function logMessageToFile(string $message): void
-    {
-
-        $wrongs  = array('<br>', '</br>', '<br/>', '</ br>', '<br />');
-        $message = str_replace($wrongs, PHP_EOL, $message);
-
-        $time    = \DateTime::createFromFormat('U.u', microtime(true));
-        $date    = $time->format("Y-m-d H:i:s.u");
-        $message = $date . " " . $message . PHP_EOL;
-
-        $logFilePath = 'logs/' . $time->format("Y_m_d") . '.log';
-        try {
-            if (!file_exists($logFilePath)) {
-                fopen($logFilePath, 'w+');
-            }
-            if ($logFile = fopen($logFilePath, 'a+')) {
-                fwrite($logFile, $message);
-                fclose($logFile);
-            }
-        } catch (\Exception $e) {
-        }
-
-    }
-
     public function getLogs(): array
     {
         return $this->_logsArray;
@@ -106,12 +100,12 @@ class Logger
 
     public static function DrawLogBox(): void
     {
-        Logger::getInstance()->drawLogsBox();
+        self::getInstance()->drawLogsBox();
     }
 
     private function drawLogsBox(): bool
     {
-        if ($this->_shouldLogToScreen == false || empty($this->_logsArray)) {
+        if (!$this->_shouldLogToScreen || empty($this->_logsArray)) {
             return false;
         }
 
@@ -210,7 +204,6 @@ class Logger
             }
         </script>
         <?php
-        Logger::Critical('DRAWING MULTIPLE LOGBOXES!', true);
         return true;
     }
 
