@@ -330,7 +330,6 @@ class SimpleDB
         for ($i = 0; $i < $length; $i++) {
             $randomString .= $characters[random_int(0, $charactersLength - 1)];
         }
-        Logger::Verbose("Generated random string: $randomString");
         return $randomString;
     }
 

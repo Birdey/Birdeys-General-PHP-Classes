@@ -8,7 +8,8 @@ use Exception;
 checkAndLoad('Birdey/LogLevel');
 
 
-class Logger {
+class Logger
+{
     private static ?Logger $instance = null;
     private static LogLevel $_logLevel = LogLevel::Verbose;
     private $_logsArray = [];
